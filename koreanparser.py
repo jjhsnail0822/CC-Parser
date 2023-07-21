@@ -30,7 +30,7 @@ class KoreanParser:
                     break
                 else:
                     backoff_time *= 2
-                    print(f'Retrying in {backoff_time/60} minutes: {str(idx)} - {self.warc_paths[idx]}')
+                    print(f'Retrying in {backoff_time//60} minutes: {str(idx)} - {self.warc_paths[idx]}')
                     time.sleep(backoff_time)
             print(f'Downloaded: {str(idx)} - {self.warc_paths[idx]}')
 
