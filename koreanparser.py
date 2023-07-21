@@ -23,15 +23,14 @@ class KoreanParser:
         save_kor_process = Process()
         for idx in range(start, len(self.warc_paths)):
             # download the warc file
-            backoff_time = 60
-            while True:
-                resp_data = requests.get(f'https://data.commoncrawl.org/{self.warc_paths[idx]}')
-                if resp_data.status_code == 200:
-                    break
-                else:
-                    backoff_time *= 2
-                    print(f'Retrying in {backoff_time//60} minutes: {str(idx)} - {self.warc_paths[idx]}')
-                    time.sleep(backoff_time)
+            resp_data = requests.get(f'https://data.commoncrawl.org/{self.warc_paths[idx]}')
+            # if the download fails, retry in a new process
+            if resp_data.status_code != 200:
+                with open('failed.txt', 'a') as f:
+                    f.write(f'{str(idx)}\n')
+                run_single_process = Process(target=self.run_single, args=(idx,), daemon=True)
+                run_single_process.start()
+                continue
             print(f'Downloaded: {str(idx)} - {self.warc_paths[idx]}')
 
             # wait until the previous save_kor_process is finished
@@ -41,6 +40,24 @@ class KoreanParser:
             # parse the downloaded warc file in a new process
             save_kor_process = Process(target=self.save_kor, args=(idx, resp_data, f'cc-kor-{str(idx).zfill(5)}.json'), daemon=True)
             save_kor_process.start()
+
+    # run the parser for a single warc file (retry if the download fails)
+    def run_single(self, idx):
+        backoff_time = 60
+        while True:
+            print(f'Retrying in {backoff_time//60} minutes: {str(idx)} - {self.warc_paths[idx]}')
+            time.sleep(backoff_time)
+            resp_data = requests.get(f'https://data.commoncrawl.org/{self.warc_paths[idx]}')
+            if resp_data.status_code == 200:
+                break
+            else:
+                backoff_time *= 2
+            print(f'Downloaded: {str(idx)} - {self.warc_paths[idx]}')
+        
+        self.save_kor(idx, resp_data, f'cc-kor-{str(idx).zfill(5)}.json')
+
+        with open('retry-and-success.txt', 'a') as f:
+            f.write(f'{str(idx)}\n')
 
     # save korean data from the response
     def save_kor(self, idx, resp, save_file_name):
