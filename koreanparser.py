@@ -52,7 +52,7 @@ class KoreanParser:
                 break
             else:
                 backoff_time *= 2
-            print(f'Downloaded: {str(idx)} - {self.warc_paths[idx]}')
+        print(f'Downloaded: {str(idx)} - {self.warc_paths[idx]}')
         
         self.save_kor(idx, resp_data, f'cc-kor-{str(idx).zfill(5)}.json')
 
