@@ -22,8 +22,7 @@ class KoreanParser:
 
     # run the parser with multiprocessing
     # start: the index of warc_paths to start
-    def run_multiprocessing(self, start):
-        num_process = 4
+    def run_multiprocessing(self, num_process, start):
         processes = []
         for idx in range(start, len(self.warc_paths)):
             time.sleep(1)
@@ -87,4 +86,4 @@ class KoreanParser:
         print(f'Done: {str(idx)} - {self.warc_paths[idx]}')
 
 p = KoreanParser()
-p.run_multiprocessing(int(sys.argv[1]))
+p.run_multiprocessing(int(sys.argv[1]), int(sys.argv[2]))
