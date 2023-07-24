@@ -85,5 +85,6 @@ class KoreanParser:
 
         print(f'Done: {str(idx)} - {self.warc_paths[idx]}')
 
-p = KoreanParser()
-p.run_multiprocessing(int(sys.argv[1]), int(sys.argv[2]))
+if __name__ == '__main__':
+    p = KoreanParser()
+    p.run_multiprocessing(int(sys.argv[1]), int(sys.argv[2]))
