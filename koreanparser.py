@@ -13,51 +13,55 @@ class KoreanParser:
     # you need to download wet.paths from commoncrawl
     def __init__(self):
         self.warc_paths = []
+        self.headers = {
+            "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+        }
         with open('wet.paths', 'r') as f:
             for line in f:
                 self.warc_paths.append(line.strip())
 
-    # run the parser
+    # run the parser with multiprocessing
     # start: the index of warc_paths to start
-    def run(self, start):
-        save_kor_process = Process()
+    def run_multiprocessing(self, start):
+        num_process = 4
+        processes = []
         for idx in range(start, len(self.warc_paths)):
-            # download the warc file
-            resp_data = requests.get(f'https://data.commoncrawl.org/{self.warc_paths[idx]}')
-            # if the download fails, retry in a new process
-            if resp_data.status_code != 200:
-                with open('failed.txt', 'a') as f:
-                    f.write(f'{str(idx)}\n')
-                run_single_process = Process(target=self.run_single, args=(idx,), daemon=True)
-                run_single_process.start()
-                continue
-            print(f'Downloaded: {str(idx)} - {self.warc_paths[idx]}')
+            time.sleep(1)
+            while len(processes) >= num_process:
+                for p in processes[:]:
+                    if not p.is_alive():
+                        processes.remove(p)
+                time.sleep(1)
 
-            # wait until the previous save_kor_process is finished
-            if save_kor_process.is_alive():
-                save_kor_process.join()
-
-            # parse the downloaded warc file in a new process
-            save_kor_process = Process(target=self.save_kor, args=(idx, resp_data, f'cc-kor-{str(idx).zfill(5)}.json'), daemon=True)
-            save_kor_process.start()
+            p = Process(target=self.run_single, args=(idx,))
+            processes.append(p)
+            p.start()
+        for p in processes:
+            p.join()
 
     # run the parser for a single warc file (retry if the download fails)
     def run_single(self, idx):
         backoff_time = 60
         while True:
-            print(f'Retrying in {backoff_time//60} minutes: {str(idx)} - {self.warc_paths[idx]}')
-            time.sleep(backoff_time)
-            resp_data = requests.get(f'https://data.commoncrawl.org/{self.warc_paths[idx]}')
+            resp_data = requests.get(f'https://data.commoncrawl.org/{self.warc_paths[idx]}', headers=self.headers)
             if resp_data.status_code == 200:
+                print(f'Downloaded: {str(idx)} - {self.warc_paths[idx]}')
                 break
             else:
+                if backoff_time == 60:
+                    with open('failed.txt', 'a') as f:
+                        f.write(f'{str(idx)}\n')
+                print(f'Retrying in {backoff_time//60} minutes: {str(idx)} - {self.warc_paths[idx]}')
+                time.sleep(backoff_time)
                 backoff_time *= 2
-        print(f'Downloaded: {str(idx)} - {self.warc_paths[idx]}')
         
-        self.save_kor(idx, resp_data, f'cc-kor-{str(idx).zfill(5)}.json')
+        # parse the downloaded warc file in a new process
+        save_kor_process = Process(target=self.save_kor, args=(idx, resp_data, f'cc-kor-{str(idx).zfill(5)}.json'))
+        save_kor_process.start()
 
-        with open('retry-and-success.txt', 'a') as f:
-            f.write(f'{str(idx)}\n')
+        if backoff_time > 60:
+            with open('retry-and-success.txt', 'a') as f:
+                f.write(f'{str(idx)}\n')
 
     # save korean data from the response
     def save_kor(self, idx, resp, save_file_name):
@@ -83,4 +87,4 @@ class KoreanParser:
         print(f'Done: {str(idx)} - {self.warc_paths[idx]}')
 
 p = KoreanParser()
-p.run(int(sys.argv[1]))
+p.run_multiprocessing(int(sys.argv[1]))
