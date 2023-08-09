@@ -3,6 +3,7 @@ from fastwarc.stream_io import GZipStream
 import io
 import json
 from multiprocessing import Process
+from os import path
 import requests
 import sys
 import time
@@ -62,6 +63,12 @@ class KoreanParser:
             with open('retry-and-success.txt', 'a') as f:
                 f.write(f'{str(idx)}\n')
 
+    # run if you want to complement the failed downloads
+    def run_complement(self):
+        for idx in range(len(self.warc_paths)):
+            if not path.exists(f'out/cc-kor-{str(idx).zfill(5)}.json'):
+                self.run_single(idx)
+    
     # save korean data from the response
     def save_kor(self, idx, resp, save_file_name):
         dataset = []
@@ -87,4 +94,5 @@ class KoreanParser:
 
 if __name__ == '__main__':
     p = KoreanParser()
-    p.run_multiprocessing(int(sys.argv[1]), int(sys.argv[2]))
+    #p.run_multiprocessing(int(sys.argv[1]), int(sys.argv[2]))
+    p.run_complement()
