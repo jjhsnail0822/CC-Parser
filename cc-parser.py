@@ -7,6 +7,7 @@ import io
 import json
 from multiprocessing import Pool, Manager
 import os
+from os import path
 import queue
 import re
 import requests
@@ -115,6 +116,15 @@ class CCParser:
             q.task_done()
         return
 
+    # run if you want to complement the failed downloads
+    def run_complement(self):
+        model = fasttext.load_model('lid.176.bin')
+        for idx in range(len(self.wet_paths)):
+            if not path.exists(f'{PATH}data/{self.cc_main_id}/cc-kor-{str(idx).zfill(5)}.json'):
+                resp_content = self.download(idx)
+                self.parse_and_save(idx, resp_content, model)
+        return
+
     def run(self):
         q = Manager().Queue()
         for idx in range(self.start_idx, len(self.wet_paths)):
@@ -133,3 +143,4 @@ if __name__ == '__main__':
         sys.exit(1)
     p = CCParser(str(sys.argv[1]), int(sys.argv[2]))
     p.run()
+    # p.run_complement()
